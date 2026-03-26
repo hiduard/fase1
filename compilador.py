@@ -325,10 +325,22 @@ def lerArquivo(nomeArquivo, linhas):
         print("ERRO ao ler arquivo: " + str(e))
         return False
 
-
 def salvarTokens(tokens_por_linha, nomeArquivo):
+    #tokens em .txt
+    try:
+        arquivo = open(nomeArquivo, 'w', encoding='utf-8')
+        for i in range(len(tokens_por_linha)):
+            arquivo.write("Expressao " + str(i + 1) + ":\n")
+            for token in tokens_por_linha[i]:
+                arquivo.write("  " + token[0] + ": " + token[1] + "\n")
+            arquivo.write("\n")
+        arquivo.close()
+        return True
+    except Exception as e:
+        print("ERRO ao salvar tokens: " + str(e))
+        return False
 
 def main():
-
+    pass
 if _name_ == "_main_":
     main()
