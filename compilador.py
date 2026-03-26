@@ -138,6 +138,12 @@ def estadoPalavraChave(linha, pos, tokens):
     return pos
 
 def estadoParenteses(linha, pos, tokens):
+    if linha[pos] == '(':
+        tokens.append((TOKEN_LPAREN, "("))
+    elif linha[pos] == ')':
+        tokens.append((TOKEN_RPAREN, ")"))
+    pos = pos + 1
+    return pos
 
 def parseExpressao(linha, _tokens_):
     #Analisa uma linha de expressao RPN e extrai os tokens.
