@@ -343,8 +343,64 @@ def _avaliar_subexpressao(contexto, resultados, memoria):
     print("ERRO: subexpressao nao reconhecida: " + str(contexto))
     return None
 
+# REPRESENTACAO INTERMEDIARIA PARA ASSEMBLY
+OP_PUSH_CONST  = "PUSH_CONST"
+OP_PUSH_RES    = "PUSH_RES"
+OP_PUSH_MEM    = "PUSH_MEM"
+OP_STORE_MEM   = "STORE_MEM"
+OP_ADD         = "ADD"
+OP_SUB         = "SUB"
+OP_MUL         = "MUL"
+OP_DIV         = "DIV"
+OP_IDIV        = "IDIV"
+OP_MOD         = "MOD"
+OP_POW         = "POW"
+
 
 def _gerar_operacoes_intermediarias(tokens, resultados_hist, memoria_nomes):
+    """Gera lista de operacoes intermediarias para traducao em Assembly."""
+    operacoes = []
+    pilha_contextos = []
+    contexto_atual = []
+
+    i = 0
+    while i < len(tokens):
+        tipo, valor = tokens[i]
+
+        if tipo == TOKEN_LPAREN:
+            pilha_contextos.append(contexto_atual)
+            contexto_atual = []
+            i = i + 1
+        elif tipo == TOKEN_RPAREN:
+            ops = _processar_subexpr_asm(contexto_atual, resultados_hist, memoria_nomes)
+            if ops is None:
+                ops = []
+            if len(pilha_contextos) > 0:
+                contexto_pai = pilha_contextos.pop()
+                contexto_pai.append(("SUBEXPR", ops))
+                contexto_atual = contexto_pai
+            else:
+                contexto_atual.append(("SUBEXPR", ops))
+            i = i + 1
+        elif tipo == TOKEN_NUMBER:
+            contexto_atual.append(("NUM", valor))
+            i = i + 1
+        elif tipo == TOKEN_OPERATOR:
+            contexto_atual.append(("OP", valor))
+            i = i + 1
+        elif tipo == TOKEN_KEYWORD:
+            contexto_atual.append(("KW", valor))
+            i = i + 1
+        else:
+            i = i + 1
+
+    for item in contexto_atual:
+        if item[0] == "SUBEXPR":
+            operacoes.extend(item[1])
+
+    resultados_hist.append(len(resultados_hist))
+    return operacoes
+
 
 def _processar_subexpr_asm(contexto, resultados_hist, memoria_nomes):
 
