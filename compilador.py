@@ -104,6 +104,10 @@ def estadoNumero(linha, pos, tokens):
 
 
 def estadoOperador(linha, pos, tokens):
+    # Estado do AFD para operadores simples: + - * ^ %
+    tokens.append((TOKEN_OPERATOR, linha[pos]))
+    pos = pos + 1
+    return pos
 
 
 def estadoDivisao(linha, pos, tokens):
