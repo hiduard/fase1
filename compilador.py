@@ -65,7 +65,15 @@ def estadoNumero(linha, pos, tokens):
 
 def estadoOperador(linha, pos, tokens):
 
+
 def estadoDivisao(linha, pos, tokens):
+    pos = pos + 1
+    if pos < len(linha) and linha[pos] == '/':
+        tokens.append((TOKEN_OPERATOR, "//"))
+        pos = pos + 1
+    else:
+        tokens.append((TOKEN_OPERATOR, "/"))
+    return pos
 
 def estadoPalavraChave(linha, pos, tokens):
 
@@ -93,7 +101,7 @@ def testeProgramaCompleto(nomeArquivo):
 
 
 def lerArquivo(nomeArquivo, linhas):
-    """Le arquivo de texto com expressoes RPN."""
+    #Le arquivo de texto com expressoes RPN.
     try:
         arquivo = open(nomeArquivo, 'r', encoding='utf-8')
         for linha in arquivo:
