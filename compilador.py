@@ -403,6 +403,59 @@ def _gerar_operacoes_intermediarias(tokens, resultados_hist, memoria_nomes):
 
 
 def _processar_subexpr_asm(contexto, resultados_hist, memoria_nomes):
+    """Gera operacoes intermediarias para uma subexpressao."""
+    operacoes = []
+
+    if len(contexto) == 1 and contexto[0][0] == "KW" and contexto[0][1] != "RES":
+        memoria_nomes[contexto[0][1]] = True
+        operacoes.append((OP_PUSH_MEM, contexto[0][1]))
+        return operacoes
+
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] == "RES":
+        if contexto[0][0] == "NUM":
+            operacoes.append((OP_PUSH_RES, contexto[0][1]))
+            return operacoes
+        elif contexto[0][0] == "SUBEXPR":
+            operacoes.extend(contexto[0][1])
+            operacoes.append((OP_PUSH_RES, "stack"))
+            return operacoes
+
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] != "RES":
+        nome_mem = contexto[1][1]
+        memoria_nomes[nome_mem] = True
+        if contexto[0][0] == "NUM":
+            operacoes.append((OP_PUSH_CONST, contexto[0][1]))
+        elif contexto[0][0] == "SUBEXPR":
+            operacoes.extend(contexto[0][1])
+        operacoes.append((OP_STORE_MEM, nome_mem))
+        return operacoes
+
+    if len(contexto) >= 3 and contexto[-1][0] == "OP":
+        operador = contexto[-1][1]
+        if contexto[0][0] == "NUM":
+            operacoes.append((OP_PUSH_CONST, contexto[0][1]))
+        elif contexto[0][0] == "SUBEXPR":
+            operacoes.extend(contexto[0][1])
+        elif contexto[0][0] == "KW":
+            memoria_nomes[contexto[0][1]] = True
+            operacoes.append((OP_PUSH_MEM, contexto[0][1]))
+
+        if contexto[1][0] == "NUM":
+            operacoes.append((OP_PUSH_CONST, contexto[1][1]))
+        elif contexto[1][0] == "SUBEXPR":
+            operacoes.extend(contexto[1][1])
+        elif contexto[1][0] == "KW":
+            memoria_nomes[contexto[1][1]] = True
+            operacoes.append((OP_PUSH_MEM, contexto[1][1]))
+
+        mapa = {"+": OP_ADD, "-": OP_SUB, "*": OP_MUL, "/": OP_DIV,
+                "//": OP_IDIV, "%": OP_MOD, "^": OP_POW}
+        if operador in mapa:
+            operacoes.append((mapa[operador], None))
+        return operacoes
+
+    return operacoes
+
 
 def gerarAssembly(tokens, codigoAssembly):
 
