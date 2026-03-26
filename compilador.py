@@ -120,6 +120,22 @@ def estadoDivisao(linha, pos, tokens):
     return pos
 
 def estadoPalavraChave(linha, pos, tokens):
+    palavra = ""
+
+    while pos < len(linha) and linha[pos] >= 'A' and linha[pos] <= 'Z':
+        palavra = palavra + linha[pos]
+        pos = pos + 1
+
+    if pos < len(linha) and ((linha[pos] >= 'a' and linha[pos] <= 'z') or
+                              (linha[pos] >= '0' and linha[pos] <= '9')):
+        while pos < len(linha) and linha[pos] != ' ' and linha[pos] != ')' and linha[pos] != '(':
+            palavra = palavra + linha[pos]
+            pos = pos + 1
+        tokens.append((TOKEN_ERROR, palavra))
+        return pos
+
+    tokens.append((TOKEN_KEYWORD, palavra))
+    return pos
 
 def estadoParenteses(linha, pos, tokens):
 
