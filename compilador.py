@@ -194,6 +194,53 @@ def _processar_subexpr_asm(contexto, resultados_hist, memoria_nomes):
 def gerarAssembly(tokens, codigoAssembly):
 
 def exibirResultados(resultados):
+    
+    print("============================================================")
+    print(" RESULTADOS DAS EXPRESSOES")
+    print("============================================================")
+    print()
+
+    for i in range(len(resultados)):
+        valor = resultados[i]
+        if valor is None:
+            print("  Expressao " + str(i + 1) + ": ERRO")
+        else:
+            # Formatar o numero
+            parte_int = int(valor)
+            diferenca = valor - parte_int
+            if diferenca < 0:
+                diferenca = -diferenca
+
+            if diferenca < 0.00001:
+                texto = str(parte_int) + ".0"
+            else:
+                if valor < 0:
+                    texto = "-"
+                    valor_abs = -valor
+                else:
+                    texto = ""
+                    valor_abs = valor
+
+                p_int = int(valor_abs)
+                p_frac = valor_abs - p_int
+                texto = texto + str(p_int) + "."
+
+                casas = 0
+                while casas < 6:
+                    p_frac = p_frac * 10
+                    digito = int(p_frac)
+                    texto = texto + str(digito)
+                    p_frac = p_frac - digito
+                    casas = casas + 1
+
+                while len(texto) > 1 and texto[-1] == '0' and texto[-2] != '.':
+                    texto = texto[:-1]
+
+            print("  Expressao " + str(i + 1) + ": " + texto)
+
+    print()
+    print("============================================================")
+
 
 def testeProgramaCompleto(nomeArquivo):
 
