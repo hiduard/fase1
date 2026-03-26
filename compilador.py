@@ -185,6 +185,66 @@ def _truncar(valor):
 
 def executarExpressao(tokens, resultados, memoria):
 
+    #Parametros:
+        #tokens     
+        #resultados 
+        #memoria    
+
+    #Retorna:
+        #float com o resultado, ou None em caso de erro.
+    pilha_contextos = []
+    contexto_atual = []
+
+    i = 0
+    while i < len(tokens):
+        tipo, valor = tokens[i]
+
+        if tipo == TOKEN_LPAREN:
+            pilha_contextos.append(contexto_atual)
+            contexto_atual = []
+            i = i + 1
+
+        elif tipo == TOKEN_RPAREN:
+            resultado_sub = _avaliar_subexpressao(contexto_atual, resultados, memoria)
+            if resultado_sub is None:
+                return None
+
+            if len(pilha_contextos) > 0:
+                contexto_pai = pilha_contextos.pop()
+                contexto_pai.append(("VAL", resultado_sub))
+                contexto_atual = contexto_pai
+            else:
+                contexto_atual.append(("VAL", resultado_sub))
+            i = i + 1
+
+        elif tipo == TOKEN_NUMBER:
+            contexto_atual.append(("NUM", valor))
+            i = i + 1
+
+        elif tipo == TOKEN_OPERATOR:
+            contexto_atual.append(("OP", valor))
+            i = i + 1
+
+        elif tipo == TOKEN_KEYWORD:
+            contexto_atual.append(("KW", valor))
+            i = i + 1
+
+        else:
+            print("ERRO: token inesperado: " + str(tokens[i]))
+            return None
+
+    resultado_final = None
+    for item in contexto_atual:
+        if item[0] == "VAL":
+            resultado_final = item[1]
+
+    if resultado_final is not None:
+        resultados.append(resultado_final)
+    else:
+        resultados.append(0.0)
+
+    return resultado_final
+
 def _avaliar_subexpressao(contexto, resultados, memoria):
 
 def _gerar_operacoes_intermediarias(tokens, resultados_hist, memoria_nomes):
@@ -265,10 +325,22 @@ def lerArquivo(nomeArquivo, linhas):
         print("ERRO ao ler arquivo: " + str(e))
         return False
 
-
 def salvarTokens(tokens_por_linha, nomeArquivo):
+    #tokens em .txt
+    try:
+        arquivo = open(nomeArquivo, 'w', encoding='utf-8')
+        for i in range(len(tokens_por_linha)):
+            arquivo.write("Expressao " + str(i + 1) + ":\n")
+            for token in tokens_por_linha[i]:
+                arquivo.write("  " + token[0] + ": " + token[1] + "\n")
+            arquivo.write("\n")
+        arquivo.close()
+        return True
+    except Exception as e:
+        print("ERRO ao salvar tokens: " + str(e))
+        return False
 
 def main():
-
+    pass
 if _name_ == "_main_":
     main()
