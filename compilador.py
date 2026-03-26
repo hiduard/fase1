@@ -91,7 +91,27 @@ def exibirResultados(resultados):
 
 def testeProgramaCompleto(nomeArquivo):
 
+
 def lerArquivo(nomeArquivo, linhas):
+    """Le arquivo de texto com expressoes RPN."""
+    try:
+        arquivo = open(nomeArquivo, 'r', encoding='utf-8')
+        for linha in arquivo:
+            linha_limpa = linha.strip()
+            if len(linha_limpa) > 0:
+                linhas.append(linha_limpa)
+        arquivo.close()
+        return True
+    except FileNotFoundError:
+        print("ERRO: Arquivo '" + nomeArquivo + "' nao encontrado.")
+        return False
+    except PermissionError:
+        print("ERRO: Sem permissao para ler '" + nomeArquivo + "'.")
+        return False
+    except Exception as e:
+        print("ERRO ao ler arquivo: " + str(e))
+        return False
+
 
 def salvarTokens(tokens_por_linha, nomeArquivo):
 
