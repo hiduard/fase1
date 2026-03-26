@@ -18,6 +18,7 @@ TOKEN_RPAREN   = "RPAREN"
 TOKEN_KEYWORD  = "KEYWORD"
 TOKEN_ERROR    = "ERROR"
 
+
 def estadoInicial(linha, pos, tokens):
 #classifica e passa o caractere para o estado apro
     while pos < len(linha):
@@ -119,6 +120,7 @@ def estadoDivisao(linha, pos, tokens):
         tokens.append((TOKEN_OPERATOR, "/"))
     return pos
 
+
 def estadoPalavraChave(linha, pos, tokens):
     palavra = ""
 
@@ -144,6 +146,7 @@ def estadoParenteses(linha, pos, tokens):
         tokens.append((TOKEN_RPAREN, ")"))
     pos = pos + 1
     return pos
+
 
 def parseExpressao(linha, _tokens_):
     #Analisa uma linha de expressao RPN e extrai os tokens.
@@ -182,6 +185,7 @@ def _potencia_inteira(base, expoente):
 
 def _truncar(valor):
     return float(int(valor))
+
 
 def executarExpressao(tokens, resultados, memoria):
 
@@ -245,7 +249,100 @@ def executarExpressao(tokens, resultados, memoria):
 
     return resultado_final
 
+
 def _avaliar_subexpressao(contexto, resultados, memoria):
+    """Avalia o conteudo de uma subexpressao (dentro de parenteses)."""
+
+    # (MEM) - leitura de memoria
+    if len(contexto) == 1 and contexto[0][0] == "KW" and contexto[0][1] != "RES":
+        nome_mem = contexto[0][1]
+        if nome_mem in memoria:
+            return memoria[nome_mem]
+        else:
+            return 0.0
+
+    # (N RES) - resultado anterior
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] == "RES":
+        n = 0
+        if contexto[0][0] == "NUM":
+            n = int(float(contexto[0][1]))
+        elif contexto[0][0] == "VAL":
+            n = int(contexto[0][1])
+
+        indice = len(resultados) - n
+        if indice >= 0 and indice < len(resultados):
+            return resultados[indice]
+        else:
+            print("ERRO: RES(" + str(n) + ") - indice fora do intervalo")
+            return 0.0
+
+    # (V MEM) - armazenar em memoria
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] != "RES":
+        nome_mem = contexto[1][1]
+        valor = 0.0
+        if contexto[0][0] == "NUM":
+            valor = float(contexto[0][1])
+        elif contexto[0][0] == "VAL":
+            valor = contexto[0][1]
+        memoria[nome_mem] = valor
+        return valor
+
+    # (A B op) - operacao aritmetica
+    if len(contexto) >= 3 and contexto[-1][0] == "OP":
+        operador = contexto[-1][1]
+
+        # Operando A
+        a = 0.0
+        if contexto[0][0] == "NUM":
+            a = float(contexto[0][1])
+        elif contexto[0][0] == "VAL":
+            a = contexto[0][1]
+        elif contexto[0][0] == "KW":
+            nome = contexto[0][1]
+            a = memoria[nome] if nome in memoria else 0.0
+
+        # Operando B
+        b = 0.0
+        if contexto[1][0] == "NUM":
+            b = float(contexto[1][1])
+        elif contexto[1][0] == "VAL":
+            b = contexto[1][1]
+        elif contexto[1][0] == "KW":
+            nome = contexto[1][1]
+            b = memoria[nome] if nome in memoria else 0.0
+
+        # Executar operacao
+        if operador == "+":
+            return a + b
+        elif operador == "-":
+            return a - b
+        elif operador == "*":
+            return a * b
+        elif operador == "/":
+            if b == 0.0:
+                print("ERRO: divisao por zero")
+                return 0.0
+            return a / b
+        elif operador == "//":
+            if b == 0.0:
+                print("ERRO: divisao por zero")
+                return 0.0
+            return _truncar(a / b)
+        elif operador == "%":
+            if b == 0.0:
+                print("ERRO: divisao por zero")
+                return 0.0
+            quociente = _truncar(a / b)
+            return a - quociente * b
+        elif operador == "^":
+            return _potencia_inteira(a, b)
+        else:
+            print("ERRO: operador desconhecido '" + operador + "'")
+            return None
+
+    print("ERRO: subexpressao nao reconhecida: " + str(contexto))
+    return None
+
 
 def _gerar_operacoes_intermediarias(tokens, resultados_hist, memoria_nomes):
 
