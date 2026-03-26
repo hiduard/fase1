@@ -62,6 +62,46 @@ def estadoInicial(linha, pos, tokens):
 
 
 def estadoNumero(linha, pos, tokens):
+    
+    # Reconhecimento de numeros reais.
+    # Aceita: inteiros (42) e reais com ponto (3.14).
+    # Rejeita: multiplos pontos (3.14.5), virgulas (3,45).
+    
+    numero = ""
+
+    while pos < len(linha) and linha[pos] >= '0' and linha[pos] <= '9':
+        numero = numero + linha[pos]
+        pos = pos + 1
+
+    if pos < len(linha) and linha[pos] == '.':
+        numero = numero + '.'
+        pos = pos + 1
+
+        if pos < len(linha) and linha[pos] >= '0' and linha[pos] <= '9':
+            while pos < len(linha) and linha[pos] >= '0' and linha[pos] <= '9':
+                numero = numero + linha[pos]
+                pos = pos + 1
+
+            if pos < len(linha) and linha[pos] == '.':
+                while pos < len(linha) and linha[pos] != ' ' and linha[pos] != ')' and linha[pos] != '(':
+                    numero = numero + linha[pos]
+                    pos = pos + 1
+                tokens.append((TOKEN_ERROR, numero))
+                return pos
+        else:
+            tokens.append((TOKEN_ERROR, numero))
+            return pos
+
+    if pos < len(linha) and linha[pos] == ',':
+        while pos < len(linha) and linha[pos] != ' ' and linha[pos] != ')' and linha[pos] != '(':
+            numero = numero + linha[pos]
+            pos = pos + 1
+        tokens.append((TOKEN_ERROR, numero))
+        return pos
+
+    tokens.append((TOKEN_NUMBER, numero))
+    return pos
+
 
 def estadoOperador(linha, pos, tokens):
 
