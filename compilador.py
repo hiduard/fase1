@@ -121,8 +121,17 @@ def parseExpressao(linha, _tokens_):
 
 
 def _potencia_inteira(base, expoente):
+    resultado = 1.0
+    exp = int(expoente)
+    i = 0
+    while i < exp:
+        resultado = resultado * base
+        i = i + 1
+    return resultado
+
 
 def _truncar(valor):
+    return float(int(valor))
 
 def executarExpressao(tokens, resultados, memoria):
 
