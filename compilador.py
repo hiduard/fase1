@@ -22,7 +22,30 @@ def estadoPalavraChave(linha, pos, tokens):
 
 def estadoParenteses(linha, pos, tokens):
 
-def parseExpressao(linha, tokens):
+def parseExpressao(linha, _tokens_):
+    #Analisa uma linha de expressao RPN e extrai os tokens.
+    estadoInicial(linha.strip(), 0, _tokens_)
+
+    for token in _tokens_:
+        if token[0] == TOKEN_ERROR:
+            print("ERRO LEXICO: token invalido '" + token[1] + "' na linha: " + linha.strip())
+            return False
+
+    nivel = 0
+    for token in _tokens_:
+        if token[0] == TOKEN_LPAREN:
+            nivel = nivel + 1
+        elif token[0] == TOKEN_RPAREN:
+            nivel = nivel - 1
+        if nivel < 0:
+            print("ERRO: parentese de fechamento sem abertura na linha: " + linha.strip())
+            return False
+    if nivel != 0:
+        print("ERRO: parenteses desbalanceados na linha: " + linha.strip())
+        return False
+
+    return True
+
 
 def _potencia_inteira(base, expoente):
 
@@ -44,7 +67,7 @@ def testeProgramaCompleto(nomeArquivo):
 
 
 def lerArquivo(nomeArquivo, linhas):
-    """Le arquivo de texto com expressoes RPN."""
+    #Le arquivo de texto com expressoes RPN.
     try:
         arquivo = open(nomeArquivo, 'r', encoding='utf-8')
         for linha in arquivo:
