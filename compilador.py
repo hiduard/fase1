@@ -342,5 +342,6 @@ def salvarTokens(tokens_por_linha, nomeArquivo):
 
 def main():
     pass
+
 if _name_ == "_main_":
     main()
