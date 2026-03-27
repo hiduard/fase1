@@ -358,7 +358,7 @@ OP_POW         = "POW"
 
 
 def _gerar_operacoes_intermediarias(tokens, resultados_hist, memoria_nomes):
-    """Gera lista de operacoes intermediarias para traducao em Assembly."""
+    #Gera lista de operacoes intermediarias para traducao em Assembly.
     operacoes = []
     pilha_contextos = []
     contexto_atual = []
@@ -464,8 +464,8 @@ def gerarAssembly(tokens, codigoAssembly):
     variaveis_mem = {}
     resultados_hist = []
 
-    for idx in range(len(_tokens_)):
-        ops = _gerar_operacoes_intermediarias(_tokens_[idx], resultados_hist, variaveis_mem)
+    for idx in range(len(tokens)):
+        ops = _gerar_operacoes_intermediarias(tokens[idx], resultados_hist, variaveis_mem)
         todas_operacoes.append(ops)
         for op, val in ops:
             if op == OP_PUSH_CONST and val is not None:
@@ -994,7 +994,80 @@ def salvarTokens(tokens_por_linha, nomeArquivo):
         return False
 
 def main():
-    pass
+    if len(sys.argv) < 2:
+        print("Uso: python3 compilador.py <arquivo_de_teste.txt>")
+        print()
+        print("Opcoes:")
+        print("  python3 compilador.py teste1.txt                      Processar arquivo")
+        print("  python3 compilador.py --testes-completo teste1.txt    Testes do programa completo")
+        sys.exit(1)
 
-if _name_ == "_main_":
+    if sys.argv[1] == "--testes-completo":
+        if len(sys.argv) < 3:
+            print("ERRO: informe o arquivo de teste.")
+            print("Uso: python3 compilador.py --testes-completo teste1.txt")
+            sys.exit(1)
+        testeProgramaCompleto(sys.argv[2])
+        sys.exit(0)
+
+    nomeArquivo = sys.argv[1]
+
+    # 1. Ler arquivo
+    print("Lendo arquivo: " + nomeArquivo)
+    linhas = []
+    if not lerArquivo(nomeArquivo, linhas):
+        sys.exit(1)
+    print("Linhas lidas: " + str(len(linhas)))
+    print()
+
+    # 2. Analise lexica
+    tokens_por_linha = []
+    erro_encontrado = False
+    for i in range(len(linhas)):
+        tokens = []
+        sucesso = parseExpressao(linhas[i], tokens)
+        tokens_por_linha.append(tokens)
+        if not sucesso:
+            erro_encontrado = True
+
+    if erro_encontrado:
+        print("AVISO: Erros lexicos encontrados.")
+        print()
+
+    # 3. Salvar tokens
+    salvarTokens(tokens_por_linha, "tokens.txt")
+
+    # 4. Executar expressoes (avaliacao RPN com pilha)
+    resultados_valores = []
+    memoria = {}
+    for i in range(len(tokens_por_linha)):
+        executarExpressao(tokens_por_linha[i], resultados_valores, memoria)
+
+    # 5. Gerar Assembly
+    codigoAssembly = [""]
+    gerarAssembly(tokens_por_linha, codigoAssembly)
+
+    # 6. Salvar Assembly
+    try:
+        arquivo = open("saida.s", 'w', encoding='utf-8')
+        arquivo.write(codigoAssembly[0])
+        arquivo.close()
+        print("Codigo Assembly gerado: saida.s")
+    except Exception as e:
+        print("ERRO ao salvar Assembly: " + str(e))
+
+    # 7. Exibir resultados numericos
+    exibirResultados(resultados_valores)
+
+    # 8. Exibir tokens
+    print("--- Tokens por expressao ---")
+    for i in range(len(tokens_por_linha)):
+        texto = ""
+        for t in tokens_por_linha[i]:
+            texto = texto + "  [" + t[0] + ": " + t[1] + "]"
+        print("  Linha " + str(i + 1) + ":" + texto)
+    print()
+    print("Arquivos gerados: saida.s, tokens.txt")
+
+if __name__ == "__main__":
     main()
