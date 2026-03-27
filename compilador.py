@@ -458,6 +458,353 @@ def _processar_subexpr_asm(contexto, resultados_hist, memoria_nomes):
 
 
 def gerarAssembly(tokens, codigoAssembly):
+    #Gera codigo Assembly ARMv7 para todas as expressoes.
+    todas_operacoes = []
+    todas_constantes = []
+    variaveis_mem = {}
+    resultados_hist = []
+
+    for idx in range(len(_tokens_)):
+        ops = _gerar_operacoes_intermediarias(_tokens_[idx], resultados_hist, variaveis_mem)
+        todas_operacoes.append(ops)
+        for op, val in ops:
+            if op == OP_PUSH_CONST and val is not None:
+                if val not in todas_constantes:
+                    todas_constantes.append(val)
+
+    asm = []
+    asm.append("@ ============================================================")
+    asm.append("@ Codigo Assembly ARMv7 - Gerado automaticamente")
+    asm.append("@ Compativel com CPUlator ARMv7 DEC1-SOC(v16.1)")
+    asm.append("@ ============================================================")
+    asm.append("")
+    asm.append(".text")
+    asm.append(".global _start")
+    asm.append("")
+    asm.append("_start:")
+    asm.append("    LDR R4, =fp_stack       @ Base da pilha FP")
+    asm.append("    MOV R5, #0              @ Offset da pilha FP")
+    asm.append("    LDR R7, =resultados     @ Base do vetor de resultados")
+    asm.append("    MOV R8, #0              @ Indice do resultado atual")
+    asm.append("")
+
+    for idx_expr in range(len(todas_operacoes)):
+        ops = todas_operacoes[idx_expr]
+        asm.append("    @ === Expressao " + str(idx_expr + 1) + " ===")
+        asm.append("    MOV R5, #0")
+        asm.append("")
+
+        for op, val in ops:
+            if op == OP_PUSH_CONST:
+                idx_c = todas_constantes.index(val)
+                asm.append("    @ Push " + str(val))
+                asm.append("    LDR R0, =const_" + str(idx_c))
+                asm.append("    VLDR D0, [R0]")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VSTR D0, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_PUSH_RES:
+                asm.append("    @ Push RES " + str(val))
+                asm.append("    LDR R0, =resultados")
+                asm.append("    MOV R2, R8")
+                asm.append("    MOV R3, #" + str(val))
+                asm.append("    MOV R6, #8")
+                asm.append("    MUL R3, R3, R6")
+                asm.append("    SUB R2, R2, R3")
+                asm.append("    ADD R0, R0, R2")
+                asm.append("    VLDR D0, [R0]")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VSTR D0, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_PUSH_MEM:
+                asm.append("    @ Push mem " + str(val))
+                asm.append("    LDR R0, =mem_" + str(val))
+                asm.append("    VLDR D0, [R0]")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VSTR D0, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_STORE_MEM:
+                asm.append("    @ Store mem " + str(val))
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]")
+                asm.append("    LDR R0, =mem_" + str(val))
+                asm.append("    VSTR D0, [R0]")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VSTR D0, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_ADD:
+                asm.append("    @ ADD")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]")
+                asm.append("    VADD.F64 D2, D0, D1")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_SUB:
+                asm.append("    @ SUB")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]")
+                asm.append("    VSUB.F64 D2, D0, D1")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_MUL:
+                asm.append("    @ MUL")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]")
+                asm.append("    VMUL.F64 D2, D0, D1")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_DIV:
+                asm.append("    @ DIV")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]")
+                asm.append("    VDIV.F64 D2, D0, D1")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_IDIV:
+                asm.append("    @ IDIV")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]")
+                asm.append("    VDIV.F64 D2, D0, D1")
+                asm.append("    VCVT.S32.F64 S4, D2")
+                asm.append("    VCVT.F64.S32 D2, S4")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_MOD:
+                asm.append("    @ MOD")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]           @ B")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]           @ A")
+                asm.append("    VDIV.F64 D2, D0, D1")
+                asm.append("    VCVT.S32.F64 S4, D2")
+                asm.append("    VCVT.F64.S32 D2, S4")
+                asm.append("    VMUL.F64 D3, D2, D1")
+                asm.append("    VSUB.F64 D2, D0, D3")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+            elif op == OP_POW:
+                lbl = "pow_e" + str(idx_expr) + "_" + str(len(asm))
+                asm.append("    @ POW")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D1, [R1]           @ expoente")
+                asm.append("    SUB R5, R5, #8")
+                asm.append("    ADD R1, R4, R5")
+                asm.append("    VLDR D0, [R1]           @ base")
+                asm.append("    VCVT.S32.F64 S4, D1")
+                asm.append("    VMOV R2, S4")
+                asm.append("    LDR R0, =const_um")
+                asm.append("    VLDR D2, [R0]           @ resultado = 1.0")
+                asm.append("    CMP R2, #0")
+                asm.append("    BLE " + lbl + "_end")
+                asm.append(lbl + "_loop:")
+                asm.append("    VMUL.F64 D2, D2, D0")
+                asm.append("    SUB R2, R2, #1")
+                asm.append("    CMP R2, #0")
+                asm.append("    BGT " + lbl + "_loop")
+                asm.append(lbl + "_end:")
+                asm.append("    VSTR D2, [R1]")
+                asm.append("    ADD R5, R5, #8")
+                asm.append("")
+
+        # armazena resultado
+        asm.append("    @ Resultado expr " + str(idx_expr + 1))
+        asm.append("    SUB R5, R5, #8")
+        asm.append("    ADD R1, R4, R5")
+        asm.append("    VLDR D0, [R1]")
+        asm.append("    ADD R1, R7, R8")
+        asm.append("    VSTR D0, [R1]")
+        asm.append("    ADD R8, R8, #8")
+        asm.append("")
+        asm.append("    VCVT.S32.F64 S0, D0")
+        asm.append("    VMOV R0, S0")
+        asm.append("    BL exibir_hex")
+        asm.append("    BL imprimir_resultado")
+        asm.append("")
+
+    asm.append("_end:")
+    asm.append("    B _end")
+    asm.append("")
+
+    # subrotinas
+    asm.append("exibir_hex:")
+    asm.append("    PUSH {R0-R3, LR}")
+    asm.append("    LDR R1, =0xFF200020")
+    asm.append("    LDR R2, =tabela_hex")
+    asm.append("    CMP R0, #0")
+    asm.append("    RSBLT R0, R0, #0")
+    asm.append("    MOV R3, #0")
+    asm.append("    BL mod10")
+    asm.append("    LDRB R6, [R2, R6]")
+    asm.append("    ORR R3, R3, R6")
+    asm.append("    BL div10")
+    asm.append("    BL mod10")
+    asm.append("    LDRB R6, [R2, R6]")
+    asm.append("    ORR R3, R3, R6, LSL #8")
+    asm.append("    BL div10")
+    asm.append("    BL mod10")
+    asm.append("    LDRB R6, [R2, R6]")
+    asm.append("    ORR R3, R3, R6, LSL #16")
+    asm.append("    BL div10")
+    asm.append("    BL mod10")
+    asm.append("    LDRB R6, [R2, R6]")
+    asm.append("    ORR R3, R3, R6, LSL #24")
+    asm.append("    STR R3, [R1]")
+    asm.append("    POP {R0-R3, PC}")
+    asm.append("")
+    asm.append("mod10:")
+    asm.append("    PUSH {LR}")
+    asm.append("    MOV R6, R0")
+    asm.append("mod10_lp:")
+    asm.append("    CMP R6, #10")
+    asm.append("    SUBGE R6, R6, #10")
+    asm.append("    BGE mod10_lp")
+    asm.append("    POP {PC}")
+    asm.append("")
+    asm.append("div10:")
+    asm.append("    PUSH {R1-R3, LR}")
+    asm.append("    MOV R1, #0")
+    asm.append("div10_lp:")
+    asm.append("    CMP R0, #10")
+    asm.append("    BLT div10_dn")
+    asm.append("    SUB R0, R0, #10")
+    asm.append("    ADD R1, R1, #1")
+    asm.append("    B div10_lp")
+    asm.append("div10_dn:")
+    asm.append("    MOV R0, R1")
+    asm.append("    POP {R1-R3, PC}")
+    asm.append("")
+    asm.append("imprimir_resultado:")
+    asm.append("    PUSH {R0-R6, LR}")
+    asm.append("    LDR R3, =0xFF201000")
+    asm.append("    VMOV R0, R1, D0")
+    asm.append("    CMP R1, #0")
+    asm.append("    BGE pr_pos")
+    asm.append("    MOV R2, #45")
+    asm.append("    STR R2, [R3]")
+    asm.append("    VNEG.F64 D0, D0")
+    asm.append("pr_pos:")
+    asm.append("    VCVT.S32.F64 S0, D0")
+    asm.append("    VMOV R0, S0")
+    asm.append("    BL print_int")
+    asm.append("    MOV R2, #46")
+    asm.append("    STR R2, [R3]")
+    asm.append("    VCVT.S32.F64 S0, D0")
+    asm.append("    VCVT.F64.S32 D1, S0")
+    asm.append("    VSUB.F64 D2, D0, D1")
+    asm.append("    LDR R0, =const_dez")
+    asm.append("    VLDR D3, [R0]")
+    asm.append("    VMUL.F64 D2, D2, D3")
+    asm.append("    VCVT.S32.F64 S0, D2")
+    asm.append("    VMOV R0, S0")
+    asm.append("    CMP R0, #0")
+    asm.append("    RSBLT R0, R0, #0")
+    asm.append("    ADD R2, R0, #48")
+    asm.append("    STR R2, [R3]")
+    asm.append("    MOV R2, #10")
+    asm.append("    STR R2, [R3]")
+    asm.append("    POP {R0-R6, PC}")
+    asm.append("")
+    asm.append("print_int:")
+    asm.append("    PUSH {R0-R6, LR}")
+    asm.append("    MOV R4, #0")
+    asm.append("    LDR R5, =print_buf")
+    asm.append("    CMP R0, #0")
+    asm.append("    BNE pi_loop")
+    asm.append("    MOV R2, #48")
+    asm.append("    STR R2, [R3]")
+    asm.append("    B pi_end")
+    asm.append("pi_loop:")
+    asm.append("    CMP R0, #0")
+    asm.append("    BEQ pi_rev")
+    asm.append("    MOV R6, R0")
+    asm.append("    MOV R1, #0")
+    asm.append("pi_ml:")
+    asm.append("    CMP R6, #10")
+    asm.append("    BLT pi_md")
+    asm.append("    SUB R6, R6, #10")
+    asm.append("    ADD R1, R1, #1")
+    asm.append("    B pi_ml")
+    asm.append("pi_md:")
+    asm.append("    STRB R6, [R5, R4]")
+    asm.append("    ADD R4, R4, #1")
+    asm.append("    MOV R0, R1")
+    asm.append("    B pi_loop")
+    asm.append("pi_rev:")
+    asm.append("    SUB R4, R4, #1")
+    asm.append("    LDRB R2, [R5, R4]")
+    asm.append("    ADD R2, R2, #48")
+    asm.append("    STR R2, [R3]")
+    asm.append("    CMP R4, #0")
+    asm.append("    BGT pi_rev")
+    asm.append("pi_end:")
+    asm.append("    POP {R0-R6, PC}")
+    asm.append("")
+
+    # dados
+    asm.append(".data")
+    asm.append(".align 3")
+    asm.append("")
+    for i in range(len(todas_constantes)):
+        asm.append("const_" + str(i) + ": .double " + str(todas_constantes[i]))
+    asm.append("")
+    asm.append("const_um:  .double 1.0")
+    asm.append("const_dez: .double 10.0")
+    asm.append("")
+    for nome in variaveis_mem:
+        asm.append("mem_" + nome + ": .double 0.0")
+    asm.append("")
+    asm.append("resultados: .space " + str(len(todas_operacoes) * 8))
+    asm.append("fp_stack: .space 800")
+    asm.append("tabela_hex: .byte 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F")
+    asm.append("print_buf: .space 20")
+    asm.append("")
+
+    codigoAssembly[0] = "\n".join(asm)
+
 
 def exibirResultados(resultados):
     
@@ -509,6 +856,106 @@ def exibirResultados(resultados):
 
 
 def testeProgramaCompleto(nomeArquivo):
+    
+    #Testa o fluxo completo usando o arquivo de teste fornecido.
+    #Para cada linha do arquivo, valida:
+    #  1. Analise lexica (tokens gerados sem erros)
+    #  2. Execucao da expressao (resultado calculado sem erros)
+    #Exibe status detalhado de cada linha.
+
+    print("=== Teste do Programa Completo: " + nomeArquivo + " ===")
+    print()
+
+    # le arquivo
+    linhas = []
+    if not lerArquivo(nomeArquivo, linhas):
+        print("FALHOU - nao foi possivel ler o arquivo")
+        return False
+
+    todos_passaram = True
+    total_linhas = len(linhas)
+    linhas_ok = 0
+    resultados = []
+    memoria = {}
+
+    for i in range(total_linhas):
+        linha = linhas[i]
+        print("Linha " + str(i + 1) + ": " + linha)
+
+        # analise lexic
+        tokens = []
+        ok_parse = parseExpressao(linha, tokens)
+
+        if not ok_parse:
+            print("  Tokens: ERRO - entrada invalida")
+            tem_erro = ""
+            for t in tokens:
+                if t[0] == TOKEN_ERROR:
+                    tem_erro = t[1]
+            if len(tem_erro) > 0:
+                print("  Token invalido: " + tem_erro)
+            print("  Status: FALHOU")
+            print()
+            todos_passaram = False
+            resultados.append(None)
+            continue
+
+        # quantidade de tokens
+        print("  Tokens: OK (" + str(len(tokens)) + " tokens)")
+
+        #  execucao da expressao
+        resultado = executarExpressao(tokens, resultados, memoria)
+
+        if resultado is None:
+            print("  Resultado: ERRO - nao foi possivel calcular")
+            print("  Status: FALHOU")
+            print()
+            todos_passaram = False
+            continue
+
+        # Fformata
+        parte_int = int(resultado)
+        diferenca = resultado - parte_int
+        if diferenca < 0:
+            diferenca = -diferenca
+
+        if diferenca < 0.00001:
+            texto_res = str(parte_int) + ".0"
+        else:
+            if resultado < 0:
+                texto_res = "-"
+                valor_abs = -resultado
+            else:
+                texto_res = ""
+                valor_abs = resultado
+            p_int = int(valor_abs)
+            p_frac = valor_abs - p_int
+            texto_res = texto_res + str(p_int) + "."
+            casas = 0
+            while casas < 6:
+                p_frac = p_frac * 10
+                digito = int(p_frac)
+                texto_res = texto_res + str(digito)
+                p_frac = p_frac - digito
+                casas = casas + 1
+            while len(texto_res) > 1 and texto_res[-1] == '0' and texto_res[-2] != '.':
+                texto_res = texto_res[:-1]
+
+        print("  Resultado: " + texto_res)
+        print("  Status: PASSOU")
+        print()
+        linhas_ok = linhas_ok + 1
+
+    print("============================================================")
+    print("Resumo: " + str(linhas_ok) + "/" + str(total_linhas) + " expressoes processadas com sucesso")
+    if todos_passaram:
+        print("Todos os testes PASSARAM!")
+    else:
+        print("Alguns testes FALHARAM.")
+    print("============================================================")
+    print()
+
+    return todos_passaram
 
 
 def lerArquivo(nomeArquivo, linhas):
