@@ -3,8 +3,8 @@
 # Projeto de Compiladores - Fase 1
 #
 # Integrantes do grupo:
-#   Eduardo Hideo Itinoseke Ogassawara
-#   Gabriel Barbosa Fernandes de Oliveira
+#   Eduardo Hideo Itinoseke Ogassawara - hiduard
+#   Gabriel Barbosa Fernandes de Oliveira - GabrielBarbosaFernandes
 #
 # Grupo 17
 #
