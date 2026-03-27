@@ -18,6 +18,7 @@ TOKEN_RPAREN   = "RPAREN"
 TOKEN_KEYWORD  = "KEYWORD"
 TOKEN_ERROR    = "ERROR"
 
+
 def estadoInicial(linha, pos, tokens):
 #classifica e passa o caractere para o estado apro
     while pos < len(linha):
@@ -119,6 +120,7 @@ def estadoDivisao(linha, pos, tokens):
         tokens.append((TOKEN_OPERATOR, "/"))
     return pos
 
+
 def estadoPalavraChave(linha, pos, tokens):
     palavra = ""
 
@@ -144,6 +146,7 @@ def estadoParenteses(linha, pos, tokens):
         tokens.append((TOKEN_RPAREN, ")"))
     pos = pos + 1
     return pos
+
 
 def parseExpressao(linha, _tokens_):
     #Analisa uma linha de expressao RPN e extrai os tokens.
@@ -182,6 +185,7 @@ def _potencia_inteira(base, expoente):
 
 def _truncar(valor):
     return float(int(valor))
+
 
 def executarExpressao(tokens, resultados, memoria):
 
@@ -245,11 +249,213 @@ def executarExpressao(tokens, resultados, memoria):
 
     return resultado_final
 
+
 def _avaliar_subexpressao(contexto, resultados, memoria):
+    """Avalia o conteudo de uma subexpressao (dentro de parenteses)."""
+
+    # (MEM) - leitura de memoria
+    if len(contexto) == 1 and contexto[0][0] == "KW" and contexto[0][1] != "RES":
+        nome_mem = contexto[0][1]
+        if nome_mem in memoria:
+            return memoria[nome_mem]
+        else:
+            return 0.0
+
+    # (N RES) - resultado anterior
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] == "RES":
+        n = 0
+        if contexto[0][0] == "NUM":
+            n = int(float(contexto[0][1]))
+        elif contexto[0][0] == "VAL":
+            n = int(contexto[0][1])
+
+        indice = len(resultados) - n
+        if indice >= 0 and indice < len(resultados):
+            return resultados[indice]
+        else:
+            print("ERRO: RES(" + str(n) + ") - indice fora do intervalo")
+            return 0.0
+
+    # (V MEM) - armazenar em memoria
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] != "RES":
+        nome_mem = contexto[1][1]
+        valor = 0.0
+        if contexto[0][0] == "NUM":
+            valor = float(contexto[0][1])
+        elif contexto[0][0] == "VAL":
+            valor = contexto[0][1]
+        memoria[nome_mem] = valor
+        return valor
+
+    # (A B op) - operacao aritmetica
+    if len(contexto) >= 3 and contexto[-1][0] == "OP":
+        operador = contexto[-1][1]
+
+        # Operando A
+        a = 0.0
+        if contexto[0][0] == "NUM":
+            a = float(contexto[0][1])
+        elif contexto[0][0] == "VAL":
+            a = contexto[0][1]
+        elif contexto[0][0] == "KW":
+            nome = contexto[0][1]
+            a = memoria[nome] if nome in memoria else 0.0
+
+        # Operando B
+        b = 0.0
+        if contexto[1][0] == "NUM":
+            b = float(contexto[1][1])
+        elif contexto[1][0] == "VAL":
+            b = contexto[1][1]
+        elif contexto[1][0] == "KW":
+            nome = contexto[1][1]
+            b = memoria[nome] if nome in memoria else 0.0
+
+        # Executar operacao
+        if operador == "+":
+            return a + b
+        elif operador == "-":
+            return a - b
+        elif operador == "*":
+            return a * b
+        elif operador == "/":
+            if b == 0.0:
+                print("ERRO: divisao por zero")
+                return 0.0
+            return a / b
+        elif operador == "//":
+            if b == 0.0:
+                print("ERRO: divisao por zero")
+                return 0.0
+            return _truncar(a / b)
+        elif operador == "%":
+            if b == 0.0:
+                print("ERRO: divisao por zero")
+                return 0.0
+            quociente = _truncar(a / b)
+            return a - quociente * b
+        elif operador == "^":
+            return _potencia_inteira(a, b)
+        else:
+            print("ERRO: operador desconhecido '" + operador + "'")
+            return None
+
+    print("ERRO: subexpressao nao reconhecida: " + str(contexto))
+    return None
+
+# REPRESENTACAO INTERMEDIARIA PARA ASSEMBLY
+OP_PUSH_CONST  = "PUSH_CONST"
+OP_PUSH_RES    = "PUSH_RES"
+OP_PUSH_MEM    = "PUSH_MEM"
+OP_STORE_MEM   = "STORE_MEM"
+OP_ADD         = "ADD"
+OP_SUB         = "SUB"
+OP_MUL         = "MUL"
+OP_DIV         = "DIV"
+OP_IDIV        = "IDIV"
+OP_MOD         = "MOD"
+OP_POW         = "POW"
+
 
 def _gerar_operacoes_intermediarias(tokens, resultados_hist, memoria_nomes):
+    """Gera lista de operacoes intermediarias para traducao em Assembly."""
+    operacoes = []
+    pilha_contextos = []
+    contexto_atual = []
+
+    i = 0
+    while i < len(tokens):
+        tipo, valor = tokens[i]
+
+        if tipo == TOKEN_LPAREN:
+            pilha_contextos.append(contexto_atual)
+            contexto_atual = []
+            i = i + 1
+        elif tipo == TOKEN_RPAREN:
+            ops = _processar_subexpr_asm(contexto_atual, resultados_hist, memoria_nomes)
+            if ops is None:
+                ops = []
+            if len(pilha_contextos) > 0:
+                contexto_pai = pilha_contextos.pop()
+                contexto_pai.append(("SUBEXPR", ops))
+                contexto_atual = contexto_pai
+            else:
+                contexto_atual.append(("SUBEXPR", ops))
+            i = i + 1
+        elif tipo == TOKEN_NUMBER:
+            contexto_atual.append(("NUM", valor))
+            i = i + 1
+        elif tipo == TOKEN_OPERATOR:
+            contexto_atual.append(("OP", valor))
+            i = i + 1
+        elif tipo == TOKEN_KEYWORD:
+            contexto_atual.append(("KW", valor))
+            i = i + 1
+        else:
+            i = i + 1
+
+    for item in contexto_atual:
+        if item[0] == "SUBEXPR":
+            operacoes.extend(item[1])
+
+    resultados_hist.append(len(resultados_hist))
+    return operacoes
+
 
 def _processar_subexpr_asm(contexto, resultados_hist, memoria_nomes):
+    """Gera operacoes intermediarias para uma subexpressao."""
+    operacoes = []
+
+    if len(contexto) == 1 and contexto[0][0] == "KW" and contexto[0][1] != "RES":
+        memoria_nomes[contexto[0][1]] = True
+        operacoes.append((OP_PUSH_MEM, contexto[0][1]))
+        return operacoes
+
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] == "RES":
+        if contexto[0][0] == "NUM":
+            operacoes.append((OP_PUSH_RES, contexto[0][1]))
+            return operacoes
+        elif contexto[0][0] == "SUBEXPR":
+            operacoes.extend(contexto[0][1])
+            operacoes.append((OP_PUSH_RES, "stack"))
+            return operacoes
+
+    if len(contexto) == 2 and contexto[1][0] == "KW" and contexto[1][1] != "RES":
+        nome_mem = contexto[1][1]
+        memoria_nomes[nome_mem] = True
+        if contexto[0][0] == "NUM":
+            operacoes.append((OP_PUSH_CONST, contexto[0][1]))
+        elif contexto[0][0] == "SUBEXPR":
+            operacoes.extend(contexto[0][1])
+        operacoes.append((OP_STORE_MEM, nome_mem))
+        return operacoes
+
+    if len(contexto) >= 3 and contexto[-1][0] == "OP":
+        operador = contexto[-1][1]
+        if contexto[0][0] == "NUM":
+            operacoes.append((OP_PUSH_CONST, contexto[0][1]))
+        elif contexto[0][0] == "SUBEXPR":
+            operacoes.extend(contexto[0][1])
+        elif contexto[0][0] == "KW":
+            memoria_nomes[contexto[0][1]] = True
+            operacoes.append((OP_PUSH_MEM, contexto[0][1]))
+
+        if contexto[1][0] == "NUM":
+            operacoes.append((OP_PUSH_CONST, contexto[1][1]))
+        elif contexto[1][0] == "SUBEXPR":
+            operacoes.extend(contexto[1][1])
+        elif contexto[1][0] == "KW":
+            memoria_nomes[contexto[1][1]] = True
+            operacoes.append((OP_PUSH_MEM, contexto[1][1]))
+
+        mapa = {"+": OP_ADD, "-": OP_SUB, "*": OP_MUL, "/": OP_DIV,
+                "//": OP_IDIV, "%": OP_MOD, "^": OP_POW}
+        if operador in mapa:
+            operacoes.append((mapa[operador], None))
+        return operacoes
+
+    return operacoes
+
 
 def gerarAssembly(tokens, codigoAssembly):
 
